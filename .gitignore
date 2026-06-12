@@ -1,5 +1,7 @@
 venv/
+data/
 __pycache__/
 .ipynb_checkpoints/
 *.pyc
 src/trial.py
+outputs/models
