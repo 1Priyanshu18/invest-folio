@@ -164,23 +164,28 @@ def train_universe(tickers: list[str], horizon: int = 1) -> pd.DataFrame:
 
 import sys
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "train":
-    universe = [
-        "RELIANCE", "HDFCBANK", "INFY", "TCS", "ITC",
-        "ASIANPAINT", "BAJFINANCE", "MARUTI", "SUNPHARMA", "SBIN",
-        "HINDUNILVR", "LT", "AXISBANK", "NESTLEIND", "TATASTEEL",
-    ]
-    print(f"── Training predictor models for {len(universe)} stocks ──\n")
+    # Full valid universe — same stocks the portfolio module uses
+    import portfolio as pf
+    rets, dropped = pf.build_universe_returns()
+    universe = list(rets.columns)
+    print(f"── Training predictor models for {len(universe)} stocks ──")
+    print(f"   (full valid universe; dropped gap-heavy: {dropped})\n")
     results = train_universe(universe, horizon=1)
 
-    print("\n══════ RESULTS ══════")
-    show_cols = ["dir_acc", "baseline", "edge", "r2", "reg_dir_acc"]
-    if "ic" in results.columns:
-        show_cols.append("ic")
-    print(results[show_cols].sort_values("edge", ascending=False)
-          .to_string(float_format=lambda x: f"{x:.4f}"))
+    if results.empty:
+        print("\n[!] No results — check [ERROR]/[warn] lines above.")
+    else:
+        print("\nRESULTS")
+        show_cols = ["dir_acc", "baseline", "edge", "r2", "reg_dir_acc"]
+        if "ic" in results.columns:
+            show_cols.append("ic")
+        print(results[show_cols].sort_values("edge", ascending=False)
+              .to_string(float_format=lambda x: f"{x:.4f}"))
+        print(f"\nMean directional accuracy: {results['dir_acc'].mean():.1%}")
+        print(f"Mean edge over baseline  : {results['edge'].mean():+.2%}")
+        print(f"Stocks beating baseline  : {(results['edge'] > 0).sum()}/{len(results)}")
 
-    print(f"\nMean directional accuracy: {results['dir_acc'].mean():.1%}")
-    print(f"Mean edge over baseline  : {results['edge'].mean():+.2%}")
-    print(f"Stocks beating baseline  : "
-          f"{(results['edge'] > 0).sum()}/{len(results)}")
-    print(f"\nModels saved to: {cfg.MODELS}")
+        # Save the results table for the report
+        results.to_csv(cfg.OUTPUTS / "predictor_results.csv")
+        print(f"\nResults table saved to: {cfg.OUTPUTS / 'predictor_results.csv'}")
+        print(f"Models saved to: {cfg.MODELS}")
